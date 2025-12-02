@@ -1,0 +1,434 @@
+BUAT PROJECT
+
+1. composer create-project laravel/laravel (nama project)
+
+2. cd (nama project)
+
+
+
+INSTALL BREEZE
+
+1. composer require laravel/breeze --dev
+
+2. php artisan breeze:install
+
+3. npm install && npm run build
+
+
+
+BUAT KOLOM ROLE (migrations/user_table)
+
+  $table->enum('role', ['admin', 'guru', 'siswa'])->default('siswa');
+
+
+
+JALANKAN MIGRATE
+
+php artisan migrate
+
+php artisan serve
+
+
+
+MULTIROLE
+
+1. tambah 'role' ( user.php )
+
+2. ( app/http/controller/auth/registeredusercontroller )
+
+        'role' => 'siswa',
+
+3. ubah routes ( routes/web.php )
+
+        Route::get('/dashboard', function () {
+
+    $user = auth()->user();
+
+
+
+    if ($user->role === 'admin') {
+
+        return redirect('/admin/dashboard');
+
+    } elseif ($user->role === 'guru') {
+
+        return redirect('/guru/dashboard');
+
+    } else {
+
+        return redirect('/siswa/dashboard');
+
+    }
+
+})->middleware(['auth'])->name('dashboard');
+
+
+
+
+
+Route::get('/admin/dashboard', function () {
+
+    return view('dashboard.admin');
+
+})->middleware(['auth'])->name('admin.dashboard');
+
+
+
+Route::get('/guru/dashboard', function () {
+
+    return view('dashboard.guru');
+
+})->middleware(['auth'])->name('guru.dashboard');
+
+
+
+Route::get('/siswa/dashboard', function () {
+
+    return view('dashboard.siswa');
+
+})->middleware(['auth'])->name('siswa.dashboard');
+
+4. buat view di resource/views/dashboard/
+
+5. salin isi kode dashboard.php default
+
+6. php artisan make:controller AdminUserController --resource
+
+isi:
+
+<?php
+
+
+
+namespace App\Http\Controllers;
+
+
+
+use Illuminate\Http\Request;
+
+use App\Models\User;
+
+use Illuminate\Auth\Events\Registered;
+
+
+
+
+
+class AdminUserController extends Controller
+
+{
+
+    // Tampilkan dashboard + user
+
+    public function index() {
+
+        $users = User::all();
+
+        return view('dashboard.admin', compact('users'));
+
+    }
+
+
+
+    // Tambah user baru
+
+    public function store(Request $r) {
+
+        User::create([
+
+            'name' => $r->name,
+
+            'email' => $r->email,
+
+            'password' => bcrypt($r->password),
+
+            'role' => $r->role,
+
+        ]);
+
+        return back();
+
+    }
+
+
+
+    // Update user
+
+    public function update(Request $r, $id) {
+
+        User::where('id', $id)->update([
+
+            'name' => $r->name,
+
+            'email' => $r->email,
+
+            'role' => $r->role,
+
+        ]);
+
+        return back();
+
+    }
+
+
+
+    // Hapus user
+
+    public function delete($id) {
+
+        User::where('id', $id)->delete();
+
+        return back();
+
+    }
+
+}
+
+7.route
+
+
+
+use App\Http\Controllers\AdminUserController;
+
+
+
+
+
+// Dashboard Admin
+
+Route::get('/admin/dashboard', function () {
+
+    return view('dashboard.admin');
+
+})->middleware(['auth'])->name('admin.dashboard');
+
+Route::get('/admin/dashboard', [AdminUserController::class, 'index']);
+
+Route::post('/admin/users', [AdminUserController::class, 'store']);
+
+Route::post('/admin/users/update/{id}', [AdminUserController::class, 'update']);
+
+Route::get('/admin/users/delete/{id}', [AdminUserController::class, 'delete']);
+
+8. admin.blade.php
+
+<x-app-layout>
+
+    <x-slot name="header">
+
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+
+            Dashboard Admin
+
+        </h2>
+
+    </x-slot>
+
+
+
+    <div class="py-8">
+
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+
+
+
+            {{-- FORM TAMBAH USER --}}
+
+            <div class="bg-white p-6 rounded-xl shadow mb-8">
+
+                <h3 class="text-lg font-bold mb-4">Tambah User Baru</h3>
+
+
+
+                <form method="POST" action="/admin/users" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+
+                    @csrf
+
+                    <input type="text" name="name" placeholder="Nama" required
+
+                        class="border px-3 py-2 rounded-lg w-full">
+
+
+
+                    <input type="email" name="email" placeholder="Email" required
+
+                        class="border px-3 py-2 rounded-lg w-full">
+
+
+
+                    <input type="password" name="password" placeholder="Password" required
+
+                        class="border px-3 py-2 rounded-lg w-full">
+
+
+
+                    <select name="role"
+
+                        class="border px-3 py-2 rounded-lg w-full">
+
+                        <option value="admin">Admin</option>
+
+                        <option value="guru">Guru</option>
+
+                        <option value="siswa">Siswa</option>
+
+                    </select>
+
+
+
+                    <button type="submit"
+
+                        class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2">
+
+                        Tambah
+
+                    </button>
+
+                </form>
+
+            </div>
+
+
+
+            {{-- TABEL USER --}}
+
+            <div class="bg-white rounded-xl shadow overflow-hidden">
+
+                <h3 class="text-lg font-bold p-6 border-b">Daftar User</h3>
+
+
+
+                <div class="overflow-x-auto">
+
+                    <table class="min-w-full text-sm text-left">
+
+                        <thead class="bg-gray-100">
+
+                            <tr>
+
+                                <th class="px-4 py-3">Nama</th>
+
+                                <th class="px-4 py-3">Email</th>
+
+                                <th class="px-4 py-3">Role</th>
+
+                                <th class="px-4 py-3 text-center">Aksi</th>
+
+                            </tr>
+
+                        </thead>
+
+
+
+                        <tbody class="divide-y">
+
+                            @foreach($users as $u)
+
+                            <tr class="hover:bg-gray-50 transition">
+
+                                <form method="POST" action="/admin/users/update/{{ $u->id }}">
+
+                                    @csrf
+
+
+
+                                    <td class="px-4 py-2">
+
+                                        <input name="name" value="{{ $u->name }}"
+
+                                            class="border px-2 py-1 rounded w-full">
+
+                                    </td>
+
+
+
+                                    <td class="px-4 py-2">
+
+                                        <input name="email" value="{{ $u->email }}"
+
+                                            class="border px-2 py-1 rounded w-full">
+
+                                    </td>
+
+
+
+                                    <td class="px-4 py-2">
+
+                                        <select name="role"
+
+                                            class="border px-2 py-1 rounded w-full">
+
+                                            <option {{ $u->role == 'admin' ? 'selected' : '' }}>
+
+                                                admin
+
+                                            </option>
+
+                                            <option {{ $u->role == 'guru' ? 'selected' : '' }}>
+
+                                                guru
+
+                                            </option>
+
+                                            <option {{ $u->role == 'siswa' ? 'selected' : '' }}>
+
+                                                siswa
+
+                                            </option>
+
+                                        </select>
+
+                                    </td>
+
+
+
+                                    <td class="px-4 py-2 flex gap-2 justify-center">
+
+                                        <button
+
+                                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">
+
+                                            Update
+
+                                        </button>
+
+
+
+                                        <a href="/admin/users/delete/{{ $u->id }}"
+
+                                            class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">
+
+                                            Hapus
+
+                                        </a>
+
+                                    </td>
+
+                                </form>
+
+                            </tr>
+
+                            @endforeach
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</x-app-layout>
+
+
+
+
+
+note:install laragon - install php 8.4(dalam folder bin-php-paste folder php 8.4 - setelah update php, laragon error di extention.curl, buka php.ini dngan klik kanan d laragon, lalu tambahkan ; di extention.curl) - cek di terminal apakah composer sudah terpasang, dengan jalankan composer -V untuk cek vers
+
